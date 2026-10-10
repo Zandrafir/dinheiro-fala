@@ -1,0 +1,360 @@
+[
+  {
+    "_obs": "EXEMPLOS DE PARTIDA (textos aproximados). Troque/adicione os textos REAIS dos seus apps e ajuste config/apps.js. 'esperado' é opcional: valor em centavos; use \"tipo\": \"ignorar\" p/ o que deve ser descartado."
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Compra no débito aprovada",
+    "texto": "Compra de R$ 20,00 em TERRA DOS",
+    "esperado": {
+      "tipo": "debito",
+      "valor": 2000,
+      "contraparte": "TERRA DOS"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Compra no débito aprovada",
+    "texto": "Compra de R$ 74,60 em TERRA DOS DINOSSAUROS",
+    "esperado": {
+      "tipo": "debito",
+      "valor": 7460,
+      "contraparte": "TERRA DOS DINOSSAUROS"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Compra no débito não realizada",
+    "texto": "Sua compra de R$ 10,00 em TERRA DOS não foi concluída, verifique se há saldo suficiente.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Nubank",
+    "texto": "Conteúdo de notificação sensível oculto",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.google.android.apps.walletnfcrel",
+    "titulo": "TERRA DOS",
+    "texto": "R$ 20,00 com Nubank Mastercard Gold ••0000",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 2000,
+      "contraparte": "TERRA DOS"
+    }
+  },
+  {
+    "app": "com.google.android.apps.walletnfcrel",
+    "titulo": "TERRA DOS",
+    "texto": "RECUSADA: R$ 10,00 com Nubank Mastercard Gold ••0000",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Transferência enviada",
+    "texto": "Você enviou uma transferência de R$ 45,00 para Maria Silva.",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 4500,
+      "contraparte": "Maria Silva"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Transferência recebida",
+    "texto": "Você recebeu uma transferência de João Souza no valor de R$ 300,00.",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 30000,
+      "contraparte": "João Souza"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Compra aprovada",
+    "texto": "Compra de R$ 45,90 APROVADA em PADARIA BOM PAO",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 4590,
+      "contraparte": "PADARIA BOM PAO"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Pagamento efetuado",
+    "texto": "Seu pagamento de R$ 1.234,56 do boleto para ENEL DISTRIBUICAO foi efetuado.",
+    "esperado": {
+      "tipo": "boleto",
+      "valor": 123456
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Ganhe cashback!",
+    "texto": "Aproveite: até R$ 50 de volta nas suas compras esta semana.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Sua fatura fechou",
+    "texto": "O valor da fatura é R$ 1.820,30. Veja sua fatura no app.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.itau",
+    "titulo": "Pix enviado",
+    "texto": "Pix de R$ 180,00 enviado para ENEL DISTRIBUICAO SP com sucesso.",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 18000,
+      "contraparte": "ENEL DISTRIBUICAO SP"
+    }
+  },
+  {
+    "app": "com.itau",
+    "titulo": "Pix recebido",
+    "texto": "Você recebeu um Pix de R$ 50,00 de ANA PEREIRA",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 5000,
+      "contraparte": "ANA PEREIRA"
+    }
+  },
+  {
+    "app": "com.itau",
+    "titulo": "Compra aprovada",
+    "texto": "Compra aprovada no cartão final 1234: R$ 89,90 em SUPERMERCADO DIA",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 8990,
+      "contraparte": "SUPERMERCADO DIA"
+    }
+  },
+  {
+    "app": "com.itau",
+    "titulo": "Segurança",
+    "texto": "Seu código de acesso é 482913. Não compartilhe.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.bradesco",
+    "titulo": "Compra aprovada",
+    "texto": "Cartão final 5678 R$ 32,50 UBER *TRIP",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 3250,
+      "contraparte": "UBER *TRIP"
+    }
+  },
+  {
+    "app": "com.bradesco",
+    "titulo": "Pix",
+    "texto": "Pix realizado: R$ 120,00 para CARLOS LIMA",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 12000,
+      "contraparte": "CARLOS LIMA"
+    }
+  },
+  {
+    "app": "com.bradesco",
+    "titulo": "Pix",
+    "texto": "Pix recebido: R$ 75,00 de PEDRO ALVES",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 7500,
+      "contraparte": "PEDRO ALVES"
+    }
+  },
+  {
+    "app": "br.com.bb.android",
+    "titulo": "Pix enviado",
+    "texto": "Você enviou R$ 60,00 para LUCIA MELO via Pix às 14:32.",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 6000,
+      "contraparte": "LUCIA MELO"
+    }
+  },
+  {
+    "app": "br.com.bb.android",
+    "titulo": "Pix recebido",
+    "texto": "Você recebeu R$ 200,00 via Pix de MARCOS RIBEIRO.",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 20000,
+      "contraparte": "MARCOS RIBEIRO"
+    }
+  },
+  {
+    "app": "br.com.bb.android",
+    "titulo": "Compra aprovada",
+    "texto": "Compra aprovada R$ 15,00 no estabelecimento: CAFE CENTRAL",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 1500,
+      "contraparte": "CAFE CENTRAL"
+    }
+  },
+  {
+    "app": "br.com.gabba.Caixa",
+    "titulo": "Compra aprovada",
+    "texto": "CAIXA: valor R$ 70,00 estabelecimento FARMACIA SAO JOAO",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 7000,
+      "contraparte": "FARMACIA SAO JOAO"
+    }
+  },
+  {
+    "app": "br.com.gabba.Caixa",
+    "titulo": "Pix enviado",
+    "texto": "Pix de R$ 90,00 enviado para RITA SOUZA",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 9000,
+      "contraparte": "RITA SOUZA"
+    }
+  },
+  {
+    "app": "com.santander.app",
+    "titulo": "Compra aprovada",
+    "texto": "Compra aprovada: R$ 45,90 - PADARIA XYZ",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 4590,
+      "contraparte": "PADARIA XYZ"
+    }
+  },
+  {
+    "app": "com.santander.app",
+    "titulo": "Pix enviado",
+    "texto": "Pix enviado: R$ 30,00 - JOSE SANTOS",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 3000,
+      "contraparte": "JOSE SANTOS"
+    }
+  },
+  {
+    "app": "br.com.intermedium",
+    "titulo": "Pix enviado",
+    "texto": "Você enviou R$ 25,00 via Pix para BRUNO COSTA",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 2500,
+      "contraparte": "BRUNO COSTA"
+    }
+  },
+  {
+    "app": "br.com.intermedium",
+    "titulo": "Compra no crédito",
+    "texto": "Compra no crédito: R$ 199,00 em NETFLIX.COM",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 19900,
+      "contraparte": "NETFLIX.COM"
+    }
+  },
+  {
+    "app": "com.c6bank.app",
+    "titulo": "Compra aprovada",
+    "texto": "Compra de R$ 18,00 aprovada no estabelecimento RESTAURANTE SABOR",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 1800,
+      "contraparte": "RESTAURANTE SABOR"
+    }
+  },
+  {
+    "app": "com.c6bank.app",
+    "titulo": "Pix enviado",
+    "texto": "Pix de R$ 55,00 enviado a TIAGO NUNES",
+    "esperado": {
+      "tipo": "pix_enviado",
+      "valor": 5500,
+      "contraparte": "TIAGO NUNES"
+    }
+  },
+  {
+    "app": "com.picpay",
+    "titulo": "Pagamento realizado",
+    "texto": "Você pagou R$ 22,00 para BANCA DO ZE",
+    "esperado": {
+      "tipo": "transferencia_enviada",
+      "valor": 2200,
+      "contraparte": "BANCA DO ZE"
+    }
+  },
+  {
+    "app": "com.picpay",
+    "titulo": "Você recebeu um pagamento",
+    "texto": "Você recebeu R$ 40,00 de LAURA MENDES",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 4000,
+      "contraparte": "LAURA MENDES"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Pagamento aprovado",
+    "texto": "Você pagou R$ 130,00 a MERCADO LIVRE",
+    "esperado": {
+      "tipo": "transferencia_enviada",
+      "valor": 13000,
+      "contraparte": "MERCADO LIVRE"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Dinheiro recebido",
+    "texto": "Você recebeu R$ 80,00 de FERNANDA ROCHA",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 8000,
+      "contraparte": "FERNANDA ROCHA"
+    }
+  },
+  {
+    "app": "com.google.android.apps.walletnfcrel",
+    "titulo": "R$ 45,90 em PADARIA XYZ",
+    "texto": "Cartão Nubank •••• 1234",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 4590,
+      "contraparte": "PADARIA XYZ"
+    }
+  },
+  {
+    "app": "com.google.android.apps.walletnfcrel",
+    "titulo": "Pagamento aprovado",
+    "texto": "Pagamento de R$ 12,50 em MERCADO DO BAIRRO",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 1250,
+      "contraparte": "MERCADO DO BAIRRO"
+    }
+  },
+  {
+    "app": "com.google.android.apps.walletnfcrel",
+    "titulo": "Novo cartão disponível",
+    "texto": "Adicione seu cartão à Carteira e aproveite ofertas.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  }
+]

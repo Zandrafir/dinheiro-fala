@@ -1,0 +1,28 @@
+{
+  "name": "dinheiro-fala",
+  "version": "1.0.0",
+  "description": "Bot de WhatsApp que fala em primeira pessoa como o seu dinheiro",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "testar-parser": "node scripts/testar-parser.js",
+    "test": "node --test test/*.test.js",
+    "pm2": "pm2 start ecosystem.config.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "better-sqlite3": "^13.0.3",
+    "date-holidays": "^3.37.0",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "node-cron": "^4.6.0",
+    "pino": "^10.4.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
