@@ -8,6 +8,7 @@ import * as ia from './ia.js';
 import { calcularSobra, resumoAtual, nomeMes } from './resumos.js';
 import { avisoGasto, decidirCategoria } from './notificacoes.js';
 import * as capturas from './capturas.js';
+import { tratarSaldo } from './saldo.js';
 import { enviar } from './saida.js';
 import { agoraLocal, parseValor, fmtBRL, fmtDataCurta, normalizar } from './util.js';
 
@@ -51,6 +52,7 @@ export const TEXTO_AJUDA = `*O que eu sei fazer* 💸
 • *resumo* (contas + movimentação do mês)
 • *capturas* (notificações que eu não entendi, pra você mandar ao Claude) · *limpar capturas*
 • *renda 5000* (pra eu estimar o que sobra)
+• *saldo 1234,50* (todo dia de manhã eu pergunto o saldo; responda o valor ou *depois*)
 • *orçamento mercado 800* · *orçamentos* · *remover orçamento mercado*
 Quando eu perguntar "foi pra quê?" sobre um Pix, é só responder (ou *pula*).`;
 
@@ -343,17 +345,21 @@ export async function tratarMensagem({ texto, citadoId = null }, { hoje = agoraL
     if (q) return responderPergunta(q, t, hoje);
   }
 
-  // 2) comandos conhecidos
+  // 2) saldo da manhã ("saldo 1234,50", ou só o valor / "depois" enquanto o bot espera)
+  const saldo = tratarSaldo(t, hoje);
+  if (saldo !== undefined) return saldo;
+
+  // 3) comandos conhecidos
   const cmd = await tentarComando(t, hoje);
   if (cmd !== undefined) return cmd;
 
-  // 3) "pula/ignora/sim/não" ou texto livre => responde a pergunta mais adequada na fila
+  // 4) "pula/ignora/sim/não" ou texto livre => responde a pergunta mais adequada na fila
   const simNao = ehSim(t) || ehNao(t);
   const pendente = perguntas.escolher({ ehSimNao: simNao, citadoId: null }) ?? null;
   if (pendente) return responderPergunta(pendente, t, hoje);
   if (PULA.test(normalizar(t))) return 'Não tenho nenhuma pergunta pendente 🙂';
 
-  // 4) conversa livre via Gemini
+  // 5) conversa livre via Gemini
   if (ia.disponivel()) {
     const acao = await ia.interpretar(t);
     if (acao && acao.acao !== 'outro') return executarAcaoIA(acao, hoje);

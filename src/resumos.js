@@ -2,6 +2,7 @@
 import * as contas from './contas.js';
 import * as tx from './transacoes.js';
 import * as ia from './ia.js';
+import { linhaSaldo } from './saldo.js';
 import { agoraLocal, fmtBRL, fmtDataCurta, diffDias } from './util.js';
 
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -97,7 +98,7 @@ export async function resumoAtual(hoje = agoraLocal()) {
   const s = calcularSobra(hoje);
   let msg = `📊 *Resumo de ${nomeMes(hoje.mes)}/${hoje.ano}*\n\n`;
   msg += b.doMes.length || b.atrasadas.length ? `${textoBloco(b, hoje)}\n\n` : 'Sem contas fixas cadastradas.\n\n';
-  msg += `Entrou: *${fmtBRL(entradas)}*\nSaiu: *${fmtBRL(saidas)}*`;
+  msg += `Entrou: *${fmtBRL(entradas)}*\nSaiu: *${fmtBRL(saidas)}*${linhaSaldo(hoje)}`;
   if (s.sobra != null) msg += `\nSobra estimada: *${fmtBRL(s.sobra)}* (${s.baseTipo === 'renda' ? 'renda informada' : 'entradas do mês'} − gastos − contas pendentes)`;
   msg += `\n\n${await comentarioBloco(b, 'Resumo sob demanda do mês.')}`;
   return msg;
