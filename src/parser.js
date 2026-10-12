@@ -1,5 +1,5 @@
 // Extração de dados de notificações: regex primeiro, Gemini só como plano B.
-import { appPorPacote, PADROES_GENERICOS, IGNORAR, RECUSADAS } from '../config/apps.js';
+import { appPorPacote, PADROES_GENERICOS, IGNORAR, RECUSADAS, DUPLICATAS } from '../config/apps.js';
 import { parseValor } from './util.js';
 import * as ia from './ia.js';
 import { log } from './log.js';
@@ -71,6 +71,9 @@ export async function interpretarNotificacao({ app: pacote, titulo, texto }, { u
   if (RECUSADAS.some((rx) => rx.test(`${titulo ?? ''}\n${texto ?? ''}`))) {
     return { ignorar: true, motivo: 'recusada', ...extrairRecusada(titulo, texto) };
   }
+
+  const alvoBruto = `${titulo ?? ''}\n${texto ?? ''}`;
+  if (DUPLICATAS.some((d) => d.pacote === pacote && d.regex.test(alvoBruto))) return { ignorar: true, motivo: 'duplicata_do_app' };
 
   const r = extrairPorRegex(pacote, titulo, texto);
   if (r) return { ...r, app: info.nome };

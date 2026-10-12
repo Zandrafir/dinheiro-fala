@@ -356,5 +356,84 @@
     "esperado": {
       "tipo": "ignorar"
     }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Você pagou R$ 39,99 a MP*GOOGLEBRASILPAGAMENTOS",
+    "texto": "O valor vai entrar na próxima fatura do seu Cartão Mercado Pago.",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 3999,
+      "contraparte": "MP*GOOGLEBRASILPAGAMENTOS"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Você pagou R$ 39,99 para Google",
+    "texto": "Confira mais detalhes.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Você pagou R$ 33,40 a Cartão de TODOS",
+    "texto": "O valor vai entrar na próxima fatura do seu Cartão Mercado Pago.",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 3340,
+      "contraparte": "Cartão de TODOS"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Seu dinheiro já está disponível",
+    "texto": "Você depositou R$ 1 via Pix e o valor já está rendendo na sua conta.",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 100
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Você ganhou R$ 0,17 de cashback",
+    "texto": "Continue usando seu Cartão de Crédito Mercado Pago para ganhar mais.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Você tem 1 boleto que vence amanhã",
+    "texto": "Mantenha suas contas em dia, faça o pagamento de R$ 317,62 para Banco Csf.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.mercadopago.wallet",
+    "titulo": "Seu Pix no Crédito pode render mais",
+    "texto": "Use o crédito parcelado via Pix do Mercado Pago e aproveite as melhores condições numa conta que já é sua!",
+    "esperado": {
+      "tipo": "ignorar"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Pagamento com NuPay aprovado",
+    "texto": "R$ 12,50 em 1x no crédito sem juros com NuPay APROVADO em 99.",
+    "esperado": {
+      "tipo": "compra_cartao",
+      "valor": 1250,
+      "contraparte": "99"
+    }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Compra com NuPay negada",
+    "texto": "Compra de R$ 18,00 em 99 NEGADA por falta de limite de crédito.",
+    "esperado": {
+      "tipo": "ignorar"
+    }
   }
 ]

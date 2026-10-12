@@ -71,6 +71,8 @@ export const RECUSADAS = [
 export const IGNORAR = [
   /\b(oferta|promo[cç][aãoõ]+\w*|cupom|ganhe|aproveite|n[aã]o perca|indique|convide|sorteio|pr[eé]-?aprovado|empr[eé]stimo|investimento|rende|rendimento)\b/i,
   /\bcashback\s+dispon[ií]vel/i,
+  /\bvoc[eê]\s+ganhou\s+R\$\s*[\d.,]+\s+de\s+cashback/i,
+  /\bboletos?\s+que\s+vence/i,
   /\blimite\s+(?:aumentou|liberado|dispon[ií]vel|pr[eé])/i,
   /\b(?:veja|confira|sua|a)\s+fatura\b/i,
   /\bfatura\s+(?:fechou|fechada|dispon[ií]vel|vence|aberta|atual)/i,
@@ -90,6 +92,7 @@ export const APPS = [
       p('debito', 'compra no debito aprovada.*?compra de {V} em {N}'),
       p('compra_cartao', 'compra no credito aprovada.*?compra de {V} em {N}'),
       p('compra_cartao', 'compra de {V} aprovada em {N}'),
+      p('compra_cartao', 'pagamento com nupay aprovado.*?{V}.*?aprovado em {N}'),
       p('boleto', 'pagamento.*?{V}.*?boleto.*?efetuado'),
     ],
   },
@@ -169,6 +172,8 @@ export const APPS = [
     nome: 'Mercado Pago',
     pacote: 'com.mercadopago.wallet',
     padroes: [
+      p('compra_cartao', 'voce pagou {V} (?:a|para) {N}\n.*?proxima fatura'),
+      p('pix_recebido', 'voce depositou {V} via pix'),
       p('transferencia_enviada', 'voce pagou {V} (?:para|a) {N}'),
       p('pix_recebido', 'voce recebeu {V} de {N}'),
       p('pix_enviado', 'voce enviou {V} (?:para|a) {N}'),
@@ -185,6 +190,15 @@ export const APPS = [
       p('compra_cartao', 'pagamento (?:de )?{V} (?:em|no|na) {N}'),
     ],
   },
+];
+
+// ---------------------------------------------------------------------------
+//  Segunda notificação do MESMO evento (só confirma a primeira). Não conta de novo.
+//  Ex.: Mercado Pago manda "Você pagou R$ 39,99 a MP*GOOGLE..." (com "próxima fatura") e logo depois
+//  "Você pagou R$ 39,99 para Google / Confira mais detalhes.".
+// ---------------------------------------------------------------------------
+export const DUPLICATAS = [
+  { pacote: 'com.mercadopago.wallet', regex: /voc[eê]\s+pagou[^\n]*\n\s*confira\s+mais\s+detalhes/i },
 ];
 
 export function appPorPacote(pacote) {
