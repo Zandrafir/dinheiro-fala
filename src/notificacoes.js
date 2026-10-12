@@ -7,16 +7,18 @@ import * as contas from './contas.js';
 import * as perguntas from './perguntas.js';
 import * as ia from './ia.js';
 import { calcularSobra } from './resumos.js';
+import * as cartoes from './cartoes.js';
+import { saldoAtual } from './saldo.js';
 import * as capturas from './capturas.js';
 import { getConfig, setConfig } from './db.js';
 import { enviar } from './saida.js';
 import { log } from './log.js';
-import { agoraLocal, agora, fmtBRL } from './util.js';
+import { agoraLocal, agora, fmtBRL, sorteia } from './util.js';
 
 export const JANELA_DEDUP_MS = 2 * 60 * 1000;
 const ROTULO = {
   pix_enviado: 'Pix', transferencia_enviada: 'transferência', boleto: 'pagamento de boleto',
-  pix_recebido: 'Pix', transferencia_recebida: 'transferência', compra_cartao: 'compra', debito: 'compra no débito',
+  pix_recebido: 'Pix', transferencia_recebida: 'transferência', compra_cartao: 'compra', compra_credito: 'compra no crédito', debito: 'compra no débito',
 };
 
 export function hashNotificacao({ app, titulo, texto }) {
@@ -53,9 +55,9 @@ export async function decidirCategoria(texto) {
  * é a mesma compra. (Dois apps iguais seguidos não entram aqui: esses são tratados pelo hash de 2 min.)
  */
 function compraJaRegistrada(r) {
-  if (!['compra_cartao', 'debito'].includes(r.tipo)) return null;
+  if (!['compra_cartao', 'compra_credito', 'debito'].includes(r.tipo)) return null;
   const desde = agoraLocal(new Date(agora().getTime() - 10 * 60 * 1000)).iso;
-  const candidatas = db().prepare(`SELECT * FROM transacoes WHERE valor = ? AND tipo IN ('compra_cartao','debito')
+  const candidatas = db().prepare(`SELECT * FROM transacoes WHERE valor = ? AND tipo IN ('compra_cartao','compra_credito','debito')
     AND COALESCE(origem_app,'') != ? AND data >= ? ORDER BY id DESC`).all(r.valor, r.app, desde);
   return candidatas.find((t) => !r.contraparte || !t.contraparte
     || contas.similaridade(t.contraparte, r.contraparte) >= 0.5
@@ -90,15 +92,29 @@ export async function processarNotificacao(body, { agoraMs = Date.now() } = {}) 
   if (r.via === 'ia') capturas.salvar({ app: n.app, titulo: n.titulo, texto: n.texto, motivo: 'so_ia' }, agoraMs);
   log.info(`Notificação: ${r.tipo} ${fmtBRL(r.valor)} via ${r.via} (${r.app})`);
 
+  let dataIso = null;
   const repetida = compraJaRegistrada(r);
-  if (repetida) {
+  if (repetida && repetida.tipo === 'compra_cartao' && r.tipo !== 'compra_cartao') {
+    // Chegou o aviso do banco dizendo se foi débito ou crédito: ele substitui o rascunho (sem tipo) da Carteira.
+    log.info(`Compra da ${repetida.origem_app} confirmada como ${r.tipo} pelo ${r.app}.`);
+    if ((repetida.contraparte || '').length > (r.contraparte || '').length) r.contraparte = repetida.contraparte;
+    dataIso = repetida.data;
+    db().prepare(`UPDATE perguntas_pendentes SET status = 'expirada' WHERE tipo = 'forma' AND transacao_id = ? AND status = 'aberta'`).run(repetida.id);
+    tx.apagar(repetida.id);
+  } else if (repetida) {
     if (r.contraparte && r.contraparte.length > (repetida.contraparte || '').length) tx.atualizar(repetida.id, { contraparte: r.contraparte });
     log.info(`Compra já registrada por outro app (${repetida.origem_app}); descartada.`);
     return { status: 'duplicada_entre_apps', id: repetida.id };
   }
 
+  return tratarInterpretada(r, { hash, agoraMs, dataIso });
+}
+
+/** Registra uma notificação já entendida (também usada quando o dono responde "débito" ou "crédito"). */
+export async function tratarInterpretada(r, { hash = null, agoraMs = agora().getTime(), dataIso = null } = {}) {
   const hoje = agoraLocal(new Date(agoraMs));
-  const base = { tipo: r.tipo, valor: r.valor, contraparte: r.contraparte, origemApp: r.app, hash };
+  const cartao = r.tipo === 'compra_credito' ? (r.cartao ?? cartoes.cartaoDoApp(r.app)) : null;
+  const base = { tipo: r.tipo, valor: r.valor, contraparte: r.contraparte, origemApp: r.app, hash, dataIso, cartao };
 
   // ------------------------------------------------------------- entradas
   if (tx.ehEntrada(r.tipo)) {
@@ -109,13 +125,23 @@ export async function processarNotificacao(body, { agoraMs = Date.now() } = {}) 
       await perguntar(texto, { tipo: 'origem', transacaoId: id });
       return { status: 'registrada', id, mensagem: texto, pergunta: 'origem' };
     }
-    const fallback = `Entrou ${fmtBRL(r.valor)} de ${r.contraparte}! Bem-vindo, dinheirinho 🤑`;
+    const fallback = sorteia([
+      `Entrou ${fmtBRL(r.valor)} de ${r.contraparte}! Bem-vindo, dinheirinho 🤑`,
+      `Chegaram ${fmtBRL(r.valor)} de ${r.contraparte}! Pode entrar, a casa é sua 🏠💰`,
+      `Ding! ${fmtBRL(r.valor)} de ${r.contraparte} no pedaço 🤑`,
+    ]);
     const msg = await ia.voz({
       situacao: 'Acabou de entrar dinheiro (Pix/transferência recebida). Comemore com humor.',
       valores: { valor: r.valor }, obrigatorios: ['valor'], extras: { de_quem: r.contraparte }, fallback,
     });
     await enviar(msg);
     return { status: 'registrada', id, mensagem: msg };
+  }
+
+  // ------------------------- compra que pode ser débito ou crédito (ainda não sei): fica de rascunho
+  if (r.tipo === 'compra_cartao' && ['Google Carteira', 'Nubank'].includes(r.app)) {
+    const id = tx.registrar({ ...base, status: 'pendente' });
+    return { status: 'registrada', id, aguardando: 'forma' };
   }
 
   // --------------------------------------------- saídas: baixa de conta fixa
@@ -134,7 +160,7 @@ export async function processarNotificacao(body, { agoraMs = Date.now() } = {}) 
     const p = casou.pagamento;
     const id = tx.registrar({ ...base, status: 'pendente' });
     const quem = r.contraparte ? ` pra ${r.contraparte}` : '';
-    const texto = `Vi ${r.tipo === 'compra_cartao' ? 'uma compra' : `um ${ROTULO[r.tipo]}`} de ${fmtBRL(r.valor)}${quem}. Isso é a conta *${p.nome}* (${fmtBRL(p.valor_previsto)})? (*sim* ou *não*)`;
+    const texto = `Vi ${['compra_cartao', 'compra_credito', 'debito'].includes(r.tipo) ? 'uma compra' : `um ${ROTULO[r.tipo]}`} de ${fmtBRL(r.valor)}${quem}. Isso é a conta *${p.nome}* (${fmtBRL(p.valor_previsto)})? (*sim* ou *não*)`;
     await perguntar(texto, { tipo: 'baixa_incerta', transacaoId: id, pagamentoId: p.id });
     return { status: 'registrada', id, baixa: 'incerta', mensagem: texto };
   }
@@ -159,10 +185,13 @@ export async function processarNotificacao(body, { agoraMs = Date.now() } = {}) 
   }
 
   const id = tx.registrar({ ...base, categoria: cat.categoria, status: 'ok' });
-  const msg = await avisoGasto({ valor: r.valor, onde: r.contraparte, categoria: cat.categoria, hoje });
-  const alerta = tx.verificarOrcamento(cat.categoria, hoje.ano, hoje.mes);
-  await enviar(alerta ? `${msg}\n\n${alerta}` : msg);
-  return { status: 'registrada', id, categoria: cat.categoria, mensagem: msg, alerta };
+  const credito = r.tipo === 'compra_credito';
+  const msg = credito
+    ? await avisoCredito({ valor: r.valor, onde: r.contraparte, categoria: cat.categoria, cartaoChave: cartao })
+    : await avisoGasto({ valor: r.valor, onde: r.contraparte, categoria: cat.categoria, hoje });
+  const alertas = [tx.verificarOrcamento(cat.categoria, hoje.ano, hoje.mes), credito && cartao ? cartoes.verificarLimite(cartao, hoje) : null].filter(Boolean);
+  await enviar(alertas.length ? `${msg}\n\n${alertas.join('\n\n')}` : msg);
+  return { status: 'registrada', id, categoria: cat.categoria, mensagem: msg, alerta: alertas[0] ?? null };
 }
 
 /** Compra recusada: não registra gasto, só avisa (uma vez, mesmo que banco e Carteira avisem). */
@@ -185,12 +214,54 @@ async function avisarRecusa(r, agoraMs) {
 /** Mensagem "saiu X em Y" na voz do dinheiro (usada também para gastos digitados). */
 export async function avisoGasto({ valor, onde, categoria, hoje = agoraLocal() }) {
   const s = calcularSobra(hoje);
+  const sa = saldoAtual();
   const valores = { valor };
-  if (s.sobra != null && s.sobra > 0) valores.sobra = s.sobra;
-  const fallback = `Saiu ${fmtBRL(valor)}${onde ? ` em ${onde}` : ''} (${categoria}). Anotado! 💸${valores.sobra ? ` Ainda tenho ${fmtBRL(s.sobra)} pra gente chegar no fim do mês.` : ''}`;
+  if (sa && sa.saldo >= 0) valores.saldo = sa.saldo;
+  else if (!sa && s.sobra != null && s.sobra > 0) valores.sobra = s.sobra;
+  const sufixo = sa ? ` Saldo agora: *${fmtBRL(sa.saldo)}*.` : valores.sobra ? ` Ainda tenho ${fmtBRL(s.sobra)} pra gente chegar no fim do mês.` : '';
+  const lugar = onde ? ` em ${onde}` : '';
+  const fallback = sorteia([
+    `Saiu ${fmtBRL(valor)}${lugar} (${categoria}). Anotado! 💸${sufixo}`,
+    `Lá se foram ${fmtBRL(valor)}${lugar} (${categoria}). Já anotei 💸${sufixo}`,
+    `Tchau, ${fmtBRL(valor)}${lugar}! (${categoria}) Foi bom enquanto durou 👋${sufixo}`,
+  ]);
   return ia.voz({
-    situacao: 'Acabou de sair dinheiro numa compra. Avise com humor sincero; se houver "sobra", diga quanto ainda resta pro fim do mês.',
+    situacao: 'Acabou de sair dinheiro da conta numa compra. Avise com humor sincero; se houver "saldo", diga quanto sobrou na conta agora; se houver "sobra", diga quanto resta pro fim do mês.',
     valores, obrigatorios: ['valor'], extras: { estabelecimento: onde || '(não informado)', categoria }, fallback,
   });
+}
+
+/** Compra no crédito: não sai do saldo, só ocupa limite do cartão. */
+export async function avisoCredito({ valor, onde, categoria, cartaoChave }) {
+  const r = cartaoChave ? cartoes.resumo(cartaoChave) : null;
+  const quem = r ? `no crédito do *${r.nome}*` : 'no crédito';
+  const dica = r && !r.informouUso ? `\n_(Me diz quanto você já tinha usado: *usado ${r.chave} 450*)_` : '';
+  if (!r) return `Passei ${fmtBRL(valor)} ${quem}${onde ? ` (${onde}, ${categoria})` : ''} 💳 Isso não mexe no saldo.`;
+  const onde2 = onde ? ` (${onde}, ${categoria})` : '';
+  const fallback = sorteia([
+    `Passei ${fmtBRL(valor)} ${quem}${onde2} 💳 Não mexe no saldo, mas já usei ${fmtBRL(r.usado)} de ${fmtBRL(r.limite)}: restam *${fmtBRL(r.disponivel)}*.`,
+    `Passei o cartão: ${fmtBRL(valor)} ${quem}${onde2} 💳 O saldo respira aliviado, mas o limite já está em ${fmtBRL(r.usado)} de ${fmtBRL(r.limite)} (restam *${fmtBRL(r.disponivel)}*).`,
+  ]);
+  const m = await ia.voz({
+    situacao: 'Acabou de sair uma compra no CRÉDITO (não sai do saldo da conta; só ocupa o limite do cartão). Avise com humor e diga quanto resta de limite ("disponivel").',
+    valores: { valor, usado: r.usado, limite: r.limite, disponivel: r.disponivel }, obrigatorios: ['valor', 'disponivel'],
+    extras: { estabelecimento: onde || '(não informado)', categoria, cartao: r.nome }, fallback,
+  });
+  return `${m}${dica}`;
+}
+
+/** Compras da Carteira/Nubank sem saber se foram débito ou crédito: depois de 3 min sem o aviso do banco, pergunta. */
+export async function jobFormaPendente(agoraMs = agora().getTime()) {
+  const limite = agoraLocal(new Date(agoraMs - 3 * 60 * 1000)).iso;
+  const linhas = db().prepare(`SELECT * FROM transacoes WHERE tipo = 'compra_cartao' AND origem_app IN ('Google Carteira','Nubank') AND data <= ?`).all(limite);
+  let n = 0;
+  for (const t of linhas) {
+    const jaPerguntei = db().prepare(`SELECT 1 FROM perguntas_pendentes WHERE tipo = 'forma' AND transacao_id = ?`).get(t.id);
+    if (jaPerguntei) continue;
+    const onde = t.contraparte ? ` em ${t.contraparte}` : '';
+    await perguntar(`Vi uma compra de ${fmtBRL(t.valor)}${onde}, mas não sei se foi no *débito* ou no *crédito* 🤔 Qual foi? (responde *débito* ou *crédito*)`, { tipo: 'forma', transacaoId: t.id });
+    n += 1;
+  }
+  return n;
 }
 

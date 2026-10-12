@@ -78,6 +78,22 @@ CREATE TABLE IF NOT EXISTS notificacoes_vistas (
   hash TEXT PRIMARY KEY,
   visto_ms INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS saldos_diarios (
+  data TEXT PRIMARY KEY,
+  valor INTEGER NOT NULL,                   -- centavos; pode ser negativo
+  criada_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cartoes (
+  chave TEXT PRIMARY KEY,                   -- 'nubank' | 'mercado pago'
+  nome TEXT NOT NULL,
+  limite INTEGER NOT NULL,                  -- centavos
+  usado_base INTEGER NOT NULL DEFAULT 0,    -- quanto já estava usado quando o dono informou
+  base_iso TEXT,                            -- 'YYYY-MM-DDTHH:MM:SS' do momento em que informou (NULL = nunca)
+  alerta80 TEXT,
+  alerta100 TEXT
+);
 `;
 
 export function iniciarDb(arquivo = config.dbPath) {
@@ -87,7 +103,21 @@ export function iniciarDb(arquivo = config.dbPath) {
   conexao.pragma('journal_mode = WAL');
   conexao.pragma('foreign_keys = ON');
   conexao.exec(SCHEMA);
+  migrar(conexao);
   return conexao;
+}
+
+// Colunas novas em bancos que já existem (CREATE TABLE IF NOT EXISTS não altera tabelas antigas).
+function migrar(c) {
+  const colunas = c.prepare('PRAGMA table_info(transacoes)').all().map((x) => x.name);
+  if (!colunas.includes('cartao')) c.exec('ALTER TABLE transacoes ADD COLUMN cartao TEXT');
+  if (!colunas.includes('fora_saldo')) c.exec('ALTER TABLE transacoes ADD COLUMN fora_saldo INTEGER NOT NULL DEFAULT 0');
+  // Limites informados pelo dono em 12/10/2026 (ajustáveis por "limite nubank 600").
+  if (c.prepare('SELECT COUNT(*) AS n FROM cartoes').get().n === 0) {
+    const ins = c.prepare('INSERT INTO cartoes (chave, nome, limite) VALUES (?, ?, ?)');
+    ins.run('nubank', 'Nubank', 60000);
+    ins.run('mercado pago', 'Mercado Pago', 40000);
+  }
 }
 
 export function db() {

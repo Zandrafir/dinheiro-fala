@@ -48,7 +48,7 @@ test('várias perguntas: fila FIFO e resposta citada vai para a pergunta certa',
 test('comandos não são engolidos como resposta de pergunta pendente', async () => {
   preparar();
   await processarNotificacao(pixEnviado('10,00', 'Ana'));
-  assert.match(await msg('ajuda'), /O que eu sei fazer/);
+  assert.match(await msg('ajuda'), /Money Talk/);
   assert.match(await msg('gastei 30 no mercado'), /R\$ 30,00/);
   assert.equal(tr()[0].status_categoria, 'pendente');   // continua esperando
 });
@@ -66,7 +66,7 @@ test('Pix recebido com origem conhecida vira entrada e avisa; sem origem, pergun
 
 test('Carteira Google: categoriza sozinho e avisa sem perguntar', async () => {
   const env = preparar();
-  const r = await processarNotificacao({ app: WALLET, titulo: 'R$ 45,90 em PADARIA XYZ', texto: 'Cartão •••• 1234' });
+  const r = await processarNotificacao({ app: NU, titulo: 'Compra no débito aprovada', texto: 'Compra de R$ 45,90 em PADARIA XYZ' });
   assert.equal(r.categoria, 'alimentação');
   assert.match(env[0].texto, /R\$ 45,90/);
   assert.equal(db().prepare("SELECT COUNT(*) n FROM perguntas_pendentes").get().n, 0);
@@ -74,7 +74,7 @@ test('Carteira Google: categoriza sozinho e avisa sem perguntar', async () => {
 
 test('Carteira Google: categoria desconhecida (confiança baixa) => pergunta', async () => {
   const env = preparar();
-  const r = await processarNotificacao({ app: WALLET, titulo: 'R$ 99,00 em XPTO COMERCIO LTDA', texto: '' });
+  const r = await processarNotificacao({ app: NU, titulo: 'Compra no débito aprovada', texto: 'Compra de R$ 99,00 em XPTO COMERCIO LTDA' });
   assert.equal(r.pergunta, 'categoria');
   assert.match(env[0].texto, /categoria/);
 });
@@ -85,7 +85,7 @@ test('Carteira Google com Gemini categorizando', async () => {
     json: async () => JSON.stringify({ categoria: 'compras', confianca: 0.9 }),
     texto: async () => 'Saiu R$ 99,00 da gente na XPTO, tá caro hein 😅',
   });
-  const r = await processarNotificacao({ app: WALLET, titulo: 'R$ 99,00 em XPTO COMERCIO LTDA', texto: '' });
+  const r = await processarNotificacao({ app: NU, titulo: 'Compra no débito aprovada', texto: 'Compra de R$ 99,00 em XPTO COMERCIO LTDA' });
   assert.equal(r.categoria, 'compras');
   assert.match(env[0].texto, /tá caro/);
   _setCliente(null);

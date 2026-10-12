@@ -5,7 +5,7 @@ import * as ia from './ia.js';
 import { log } from './log.js';
 
 export const TIPOS = [
-  'pix_enviado', 'pix_recebido', 'compra_cartao', 'debito', 'boleto',
+  'pix_enviado', 'pix_recebido', 'compra_credito', 'compra_cartao', 'debito', 'boleto',
   'transferencia_enviada', 'transferencia_recebida',
 ];
 

@@ -42,7 +42,7 @@ test('mesma compra vinda do Nubank e da Carteira Google conta uma vez só (e fic
   const nu = { app: NU, titulo: 'Compra no débito aprovada', texto: 'Compra de R$ 20,00 em TERRA DOS DINOSSAUROS' };
   const wallet = { app: 'com.google.android.apps.walletnfcrel', titulo: 'TERRA DOS', texto: 'R$ 20,00 com Nubank Mastercard Gold ••0000' };
   assert.equal((await processarNotificacao(wallet)).status, 'registrada');
-  assert.equal((await processarNotificacao(nu)).status, 'duplicada_entre_apps');
+  assert.equal((await processarNotificacao(nu)).status, 'registrada');   // o banco confirma e substitui o rascunho da Carteira
   const linhas = db().prepare('SELECT contraparte FROM transacoes').all();
   assert.equal(linhas.length, 1);
   assert.equal(linhas[0].contraparte, 'TERRA DOS DINOSSAUROS');

@@ -24,7 +24,7 @@ test('sem pacote: deduz o app pelo conteúdo (NuPay, Mercado Pago, Carteira)', (
 
 test('NuPay aprovado sem título nem pacote vira compra no cartão', async () => {
   const r = await interpretarNotificacao({ app: '{notification_package}', titulo: '{notification_title}', texto: 'R$ 18,00 em 1x no crédito sem juros com NuPay APROVADO em 99.' }, { usarIA: false });
-  assert.equal(r.tipo, 'compra_cartao'); assert.equal(r.valor, 1800); assert.equal(r.contraparte, '99');
+  assert.equal(r.tipo, 'compra_credito'); assert.equal(r.valor, 1800); assert.equal(r.contraparte, '99');
 });
 
 test('NuPay negada sem pacote continua sendo recusada (só avisa)', async () => {

@@ -62,16 +62,18 @@ test('"depois" para as perguntas do dia, mas o valor ainda pode vir mais tarde',
 });
 
 test('"saldo 500" funciona a qualquer hora, inclusive negativo; número solto fora do contexto não vira saldo', async () => {
-  preparar('2026-10-13T11:00:00Z');
+  const env = preparar('2026-10-13T11:00:00Z');
   assert.notEqual(saldoDoDia(agoraLocal()), 500);
   assert.match(await msg('saldo 500'), /R\$ 500,00/);
-  assert.match(await msg('saldo -50,25'), /-R\$ 50,25/);
+  await msg('saldo -50,25');                                     // diferente do esperado: o bot confirma e pergunta o motivo
+  assert.match(env.at(-2).texto, /Saldo de hoje: \*-R\$ 50,25\*/);
   assert.equal(saldoDoDia(agoraLocal()), -5025);
   // com o saldo já respondido, um número solto não é capturado como saldo
   assert.doesNotMatch(await msg('300'), /Saldo de hoje/);
 });
 
-test('"saldo" sozinho continua sendo a pergunta "quanto sobra?"', async () => {
+test('"saldo" sozinho mostra o saldo atual (e "sobra" continua sendo o quanto sobra no mês)', async () => {
   preparar('2026-10-13T11:00:00Z');
-  assert.match(await msg('saldo'), /renda|sobra|Sobram|vermelho/i);
+  assert.match(await msg('saldo'), /saldo 1234,50/);               // sem saldo informado: ensina a informar
+  assert.match(await msg('sobra'), /renda|sobra|Sobram|vermelho/i);
 });

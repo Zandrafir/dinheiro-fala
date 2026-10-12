@@ -45,11 +45,11 @@ export function categorizarLocal(texto) {
 
 // --------------------------------------------------------------- transações
 export function registrar({ tipo, valor, contraparte = null, categoria = null, descricao = null,
-  origemApp = null, status = 'ok', hash = null, dataIso = null }) {
+  origemApp = null, status = 'ok', hash = null, dataIso = null, cartao = null, foraSaldo = false }) {
   const data = dataIso || agoraLocal().iso;
   const r = db().prepare(`INSERT INTO transacoes
-    (data, tipo, valor, contraparte, categoria, descricao, origem_app, status_categoria, hash_notificacao)
-    VALUES (?,?,?,?,?,?,?,?,?)`).run(data, tipo, valor, contraparte, categoria, descricao, origemApp, status, hash);
+    (data, tipo, valor, contraparte, categoria, descricao, origem_app, status_categoria, hash_notificacao, cartao, fora_saldo)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(data, tipo, valor, contraparte, categoria, descricao, origemApp, status, hash, cartao, foraSaldo ? 1 : 0);
   return Number(r.lastInsertRowid);
 }
 
@@ -58,7 +58,7 @@ export function obter(id) {
 }
 
 export function atualizar(id, campos) {
-  const mapa = { categoria: 'categoria', descricao: 'descricao', status: 'status_categoria', contraparte: 'contraparte' };
+  const mapa = { categoria: 'categoria', descricao: 'descricao', status: 'status_categoria', contraparte: 'contraparte', tipo: 'tipo', cartao: 'cartao' };
   const sets = []; const vals = [];
   for (const [k, col] of Object.entries(mapa)) {
     if (campos[k] !== undefined) { sets.push(`${col} = ?`); vals.push(campos[k]); }

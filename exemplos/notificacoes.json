@@ -362,7 +362,7 @@
     "titulo": "Você pagou R$ 39,99 a MP*GOOGLEBRASILPAGAMENTOS",
     "texto": "O valor vai entrar na próxima fatura do seu Cartão Mercado Pago.",
     "esperado": {
-      "tipo": "compra_cartao",
+      "tipo": "compra_credito",
       "valor": 3999,
       "contraparte": "MP*GOOGLEBRASILPAGAMENTOS"
     }
@@ -380,7 +380,7 @@
     "titulo": "Você pagou R$ 33,40 a Cartão de TODOS",
     "texto": "O valor vai entrar na próxima fatura do seu Cartão Mercado Pago.",
     "esperado": {
-      "tipo": "compra_cartao",
+      "tipo": "compra_credito",
       "valor": 3340,
       "contraparte": "Cartão de TODOS"
     }
@@ -423,7 +423,7 @@
     "titulo": "Pagamento com NuPay aprovado",
     "texto": "R$ 12,50 em 1x no crédito sem juros com NuPay APROVADO em 99.",
     "esperado": {
-      "tipo": "compra_cartao",
+      "tipo": "compra_credito",
       "valor": 1250,
       "contraparte": "99"
     }

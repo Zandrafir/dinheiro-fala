@@ -36,5 +36,8 @@ export function escolher({ ehSimNao, citadoId = null }, agoraMs = Date.now()) {
     const conf = lista.filter((q) => ehConfirmacao(q.tipo));
     if (conf.length) return conf[conf.length - 1];
   }
+  // a conferência do saldo da manhã é a pergunta mais fresca: vale antes das antigas (nas últimas 3h)
+  const dif = lista.find((q) => q.tipo === 'saldo_diferenca' && q.criada_ms > agoraMs - 3 * 3600 * 1000);
+  if (dif) return dif;
   return lista.find((q) => !ehConfirmacao(q.tipo)) || null;
 }

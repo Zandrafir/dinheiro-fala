@@ -6,11 +6,12 @@ import * as contas from './contas.js';
 import * as perguntas from './perguntas.js';
 import * as ia from './ia.js';
 import { calcularSobra, resumoAtual, nomeMes } from './resumos.js';
-import { avisoGasto, decidirCategoria } from './notificacoes.js';
+import { avisoGasto, avisoCredito, decidirCategoria, tratarInterpretada } from './notificacoes.js';
 import * as capturas from './capturas.js';
-import { tratarSaldo } from './saldo.js';
+import { tratarSaldo, textoSaldo, lerDiferenca, linhaSaldo } from './saldo.js';
+import * as cartoes from './cartoes.js';
 import { enviar } from './saida.js';
-import { agoraLocal, parseValor, fmtBRL, fmtDataCurta, normalizar } from './util.js';
+import { agoraLocal, parseValor, fmtBRL, fmtDataCurta, normalizar, sorteia } from './util.js';
 
 const VAL = String.raw`(?:r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)`;
 const PREP = String.raw`(?:(?:no|na|em|de|do|da|dos|das|com|pra|para|num|numa|n[oa]s?)\s+)?`;
@@ -31,7 +32,12 @@ const RE = {
   gasto: new RegExp(String.raw`^(?:gastei|comprei|paguei|saiu|gasto)\s+${VAL}\s*(?:reais|conto|pila|pilas)?\s*${PREP}(.*)$`, 'i'),
   entrada: new RegExp(String.raw`^(?:recebi|entrou|ganhei)\s+${VAL}\s*(?:reais|conto|pila|pilas)?\s*${PREP}(.*)$`, 'i'),
   qGastei: /quanto\s+(?:eu\s+)?(?:j[aá]\s+)?(?:gastei|gastamos|saiu)/i,
-  qSobra: /quanto\s+(?:ainda\s+)?(?:sobra|resta|falta|tenho|posso)|^(?:saldo|sobra)\??$/i,
+  qSobra: /quanto\s+(?:ainda\s+)?(?:sobra|resta|falta|posso)|^sobra\??$/i,
+  qSaldo: /^(?:(?:qual\s+(?:[eé]\s+)?)?(?:o\s+)?(?:meu\s+)?saldo(?:\s+atual)?|quanto\s+(?:eu\s+)?(?:ainda\s+)?tenho(?:\s+na\s+conta)?|quanto\s+tem\s+na\s+conta)\s*\??$/i,
+  limites: /^(?:limites?(?:\s+de\s+cr[eé]dito)?|meus\s+limites|cart[oõ]es|meus\s+cart[oõ]es|quanto\s+(?:ainda\s+)?(?:resta|tenho|sobra)\s+de\s+(?:limite|cr[eé]dito))\s*\??$/i,
+  limiteDefinir: new RegExp(String.raw`^limite\s+(.+?)\s+${VAL}$`, 'i'),
+  usadoDefinir: new RegExp(String.raw`^(?:usado|usei|uso|fatura)\s+(.+?)\s+${VAL}$`, 'i'),
+  pagarFatura: new RegExp(String.raw`^(?:paguei|pago|pagar)\s+(?:a\s+)?fatura\s+(?:do\s+|da\s+|de\s+)?(.+?)\s+${VAL}$`, 'i'),
   qCategoria: /(?:gastos?\s+)?por\s+categorias?|^categorias$/i,
   qUltimos: /[uú]ltimos?\s+(?:gastos?|lan[çc]amentos?|movimenta[çc][õo]es?)|^extrato$/i,
 };
@@ -43,20 +49,36 @@ const PULA = /^(pula|pular|ignora|ignorar|deixa|deixa pra la|esquece|nada)$/;
 const ehSim = (t) => SIM.test(normalizar(t));
 const ehNao = (t) => NAO.test(normalizar(t));
 
-export const TEXTO_AJUDA = `*O que eu sei fazer* 💸
-• *gastei 45 no mercado* / *recebi 300 do João*
-• *quanto gastei?* · *quanto sobra?* · *gastos por categoria* · *últimos gastos*
-• *aluguel 1200 dia 5* (conta fixa; pode mandar várias linhas)
-• *minhas contas* · *editar luz 200 dia 12* · *remover luz*
-• *paguei luz* (dou baixa na conta)
-• *resumo* (contas + movimentação do mês)
-• *capturas* (notificações que eu não entendi, pra você mandar ao Claude) · *limpar capturas*
-• *renda 5000* (pra eu estimar o que sobra)
-• *saldo 1234,50* (todo dia de manhã eu pergunto o saldo; responda o valor ou *depois*)
-• *orçamento mercado 800* · *orçamentos* · *remover orçamento mercado*
-Quando eu perguntar "foi pra quê?" sobre um Pix, é só responder (ou *pula*).`;
+export const TEXTO_AJUDA = `*Money Talk: seu dinheiro conversando com você* 💸
 
-const NAO_ENTENDI = 'Hmm, não entendi essa 🤔 Manda *ajuda* que eu mostro o que sei fazer.';
+*💰 Saldo*
+• *Saldo* · eu digo quanto tem na conta agora
+• *Saldo 1234,50* · acerta o saldo (todo dia às 8h eu pergunto)
+
+*📝 Gastos e entradas*
+• *Gastei 45 no mercado* · débito ou dinheiro
+• *Gastei 45 no mercado no crédito nubank* · crédito não mexe no saldo
+• *Recebi 300 do João*
+• *Quanto gastei?* · *Gastos por categoria* · *Últimos gastos*
+
+*💳 Crédito*
+• *Limites* · quanto resta em cada cartão
+• *Limite nubank 600* · *Usado nubank 450*
+• *Paguei fatura nubank 450*
+
+*📅 Contas fixas*
+• *Aluguel 1200 dia 5* · *Minhas contas* · *Paguei luz*
+• *Editar luz 200 dia 12* · *Remover luz*
+
+*📊 Resumos e metas*
+• *Resumo* · *Quanto sobra?* · *Renda 5000*
+• *Orçamento mercado 800* · *Orçamentos*
+
+*🛠️ Outros*
+• *Capturas* (notificações que não entendi) · *Limpar capturas*
+Quando eu perguntar "foi pra quê?", é só responder (ou *pula*).`;
+
+const NAO_ENTENDI = 'Hmm, não entendi essa 🤔 Manda *ajuda* e eu mostro tudo o que sei fazer.';
 
 // ------------------------------------------------------------------ helpers
 async function resolverCategoria(resposta) {
@@ -84,7 +106,23 @@ function comAlerta(msg, categoria, hoje) {
 
 // ----------------------------------------------------------------- ações
 async function registrarGasto({ valor, descricao, categoria = null }, hoje) {
-  const desc = (descricao || '').trim();
+  let desc = (descricao || '').trim();
+  // "... no crédito [cartão]": compra no crédito (não sai do saldo, só ocupa o limite)
+  const mc = /\s*\bno\s+cr[eé]dito(?:\s+(?:do\s+|da\s+|no\s+|na\s+)?(.+))?$/i.exec(desc);
+  if (mc) {
+    desc = desc.slice(0, mc.index).trim();
+    const cartao = cartoes.chaveCartao(mc[1] ?? '') ?? 'nubank';
+    if (!desc && !categoria) {
+      const id = tx.registrar({ tipo: 'compra_credito', valor, cartao, status: 'pendente' });
+      await perguntar(`Anotei ${fmtBRL(valor)} no crédito do *${cartoes.obter(cartao)?.nome ?? cartao}*. Foi em quê? (ou *pula*)`, { tipo: 'categoria', transacaoId: id });
+      return null;
+    }
+    const cat = categoria || (await resolverCategoria(desc));
+    tx.registrar({ tipo: 'compra_credito', valor, contraparte: desc || null, categoria: cat, descricao: desc || null, cartao });
+    const msg = await avisoCredito({ valor, onde: desc, categoria: cat, cartaoChave: cartao });
+    const extras = [tx.verificarOrcamento(cat, hoje.ano, hoje.mes), cartoes.verificarLimite(cartao, hoje)].filter(Boolean);
+    return extras.length ? `${msg}\n\n${extras.join('\n\n')}` : msg;
+  }
   if (!desc && !categoria) {
     const id = tx.registrar({ tipo: 'gasto_manual', valor, status: 'pendente' });
     const texto = `Anotei ${fmtBRL(valor)} de gasto. Foi em quê? (ou *pula*)`;
@@ -107,7 +145,10 @@ async function registrarGasto({ valor, descricao, categoria = null }, hoje) {
 async function registrarEntrada({ valor, descricao }) {
   const de = (descricao || '').trim();
   tx.registrar({ tipo: 'entrada_manual', valor, contraparte: de || null, categoria: 'entrada', descricao: de || null });
-  const fallback = `Entrou ${fmtBRL(valor)}${de ? ` de ${de}` : ''}! Gostei 🤑`;
+  const fallback = sorteia([
+    `Entrou ${fmtBRL(valor)}${de ? ` de ${de}` : ''}! Gostei 🤑`,
+    `Uau, ${fmtBRL(valor)}${de ? ` de ${de}` : ''} no bolso! Vou até me arrumar 💰`,
+  ]);
   return ia.voz({
     situacao: 'O dono avisou que recebeu dinheiro. Comemore com humor.',
     valores: { valor }, obrigatorios: ['valor'], extras: { de_quem: de || '(não informado)' }, fallback,
@@ -156,6 +197,33 @@ function textoOrcamentos(hoje) {
   const l = tx.listarOrcamentos(hoje.ano, hoje.mes);
   if (!l.length) return 'Sem orçamentos ainda. Ex.: *orçamento mercado 800* e eu aviso aos 80% e aos 100%.';
   return `*Orçamentos de ${nomeMes(hoje.mes)}*\n${l.map((o) => `• ${o.categoria}: ${fmtBRL(o.gasto)} de ${fmtBRL(o.limite)} (${Math.round((o.gasto / o.limite) * 100)}%)`).join('\n')}`;
+}
+
+// ------------------------------------------------------------ cartões de crédito
+const textoCartao = (c) => `*${c.nome}*: usado ${fmtBRL(c.usado)} de ${fmtBRL(c.limite)} · resta *${fmtBRL(c.disponivel)}*`;
+
+function cmdLimite(m) {
+  const chave = cartoes.chaveCartao(m[1]); const v = parseValor(m[2]);
+  if (!chave || !v) return 'Qual cartão? Me manda assim: *limite nubank 600* (ou *mercado pago*).';
+  cartoes.definirLimite(chave, v);
+  return `Combinado 💳 O limite do *${cartoes.obter(chave).nome}* agora é ${fmtBRL(v)}.`;
+}
+
+function cmdUsado(m, hoje) {
+  const chave = cartoes.chaveCartao(m[1]); const v = parseValor(m[2]);
+  if (!chave || !v) return 'Me manda assim: *usado nubank 450* (quanto do limite já foi usado).';
+  cartoes.definirUsado(chave, v, hoje.iso);
+  const c = cartoes.resumo(chave);
+  return `Anotado ✅ ${textoCartao(c)}.\nDaqui pra frente eu somo cada compra no crédito.`;
+}
+
+function cmdPagarFatura(m) {
+  const chave = cartoes.chaveCartao(m[1]); const v = parseValor(m[2]);
+  if (!chave || !v) return 'Me manda assim: *paguei fatura nubank 450*.';
+  const c0 = cartoes.obter(chave);
+  tx.registrar({ tipo: 'pagamento_fatura', valor: v, contraparte: `Fatura ${c0.nome}`, descricao: 'Pagamento de fatura', categoria: 'contas', cartao: chave });
+  const c = cartoes.resumo(chave);
+  return `Fatura do *${c0.nome}* paga: ${fmtBRL(v)} saíram da conta ✅ Limite liberado!\n${textoCartao(c)}.${linhaSaldo()}`;
 }
 
 // ------------------------------------------------------------- contas fixas
@@ -226,6 +294,35 @@ async function responderPergunta(q, texto, hoje) {
     return comAlerta(msg, cat, hoje);
   }
 
+  if (q.tipo === 'saldo_diferenca') {
+    const d = lerDiferenca();
+    if (!d || d.perguntaId !== q.id) { perguntas.fechar(q.id, 'expirada'); return 'Essa conferência já passou 🤷'; }
+    if (pula) { perguntas.fechar(q.id, 'pulada'); return 'Beleza, deixo essa diferença quieta 🤐 Vale o saldo que você me passou.'; }
+    const motivo = texto.trim();
+    const valor = Math.abs(d.diff);
+    perguntas.fechar(q.id);
+    if (d.diff < 0) {
+      const cat = await resolverCategoria(motivo);
+      tx.registrar({ tipo: 'gasto_manual', valor, contraparte: motivo, descricao: motivo, categoria: cat, foraSaldo: true });
+      return comAlerta(`Anotado: ${fmtBRL(valor)} em *${cat}* (${motivo}) ✅ Isso já estava no saldo que você me passou, então não mexi nele.`, cat, hoje);
+    }
+    tx.registrar({ tipo: 'entrada_manual', valor, contraparte: motivo, descricao: motivo, categoria: 'entrada', foraSaldo: true });
+    return `Anotado: entraram ${fmtBRL(valor)} (${motivo}) 🤑 Já estava no saldo que você me passou, então não mexi nele.`;
+  }
+
+  if (q.tipo === 'forma') {
+    if (!t) { perguntas.fechar(q.id, 'expirada'); return 'Essa compra sumiu daqui 🤷'; }
+    const n = normalizar(texto);
+    const credito = /\bcredito\b/.test(n);
+    const debito = /\bdebito\b/.test(n);
+    if (!credito && !debito) return 'Responde só *débito* ou *crédito*, pra eu saber se desconto do saldo 🙂';
+    perguntas.fechar(q.id);
+    const cartao = credito ? (cartoes.chaveCartao(texto) ?? cartoes.cartaoDoApp(t.origem_app) ?? 'nubank') : null;
+    tx.apagar(t.id);
+    await tratarInterpretada({ tipo: credito ? 'compra_credito' : 'debito', valor: t.valor, contraparte: t.contraparte, app: t.origem_app, cartao }, { dataIso: t.data });
+    return null;
+  }
+
   if (q.tipo === 'baixa_incerta') {
     if (!t) { perguntas.fechar(q.id, 'expirada'); return 'Essa transação sumiu daqui 🤷'; }
     if (ehSim(texto)) {
@@ -276,6 +373,8 @@ async function executarAcaoIA(a, hoje) {
     case 'entrada': return registrarEntrada({ valor: a.valor, descricao: a.descricao });
     case 'consulta_gastos_mes': return textoGastosMes(hoje);
     case 'consulta_sobra': return textoSobra(hoje);
+    case 'consulta_saldo': return textoSaldo();
+    case 'consulta_limites': return cartoes.textoLimites();
     case 'consulta_por_categoria': return textoPorCategoria(hoje);
     case 'consulta_ultimos': return textoUltimos();
     case 'conta_paga': return a.nome ? cmdPaguei(a.nome, hoje) : NAO_ENTENDI;
@@ -291,6 +390,11 @@ async function tentarComando(t, hoje) {
   let m;
   if (RE.ajuda.test(t)) return TEXTO_AJUDA;
   if (RE.resumo.test(t)) return resumoAtual(hoje);
+  if (RE.qSaldo.test(t)) return textoSaldo();
+  if (RE.limites.test(t)) return cartoes.textoLimites();
+  if ((m = RE.pagarFatura.exec(t))) return cmdPagarFatura(m);
+  if ((m = RE.limiteDefinir.exec(t))) return cmdLimite(m);
+  if ((m = RE.usadoDefinir.exec(t))) return cmdUsado(m, hoje);
   if (RE.limparCapturas.test(t)) return `Apaguei ${capturas.limpar()} captura(s) 🗑️`;
   if (RE.capturas.test(t)) {
     if (!capturas.contar()) return 'Não tenho nenhuma notificação pendente de aprender. Tudo que chegou eu entendi 👌';
@@ -346,7 +450,7 @@ export async function tratarMensagem({ texto, citadoId = null }, { hoje = agoraL
   }
 
   // 2) saldo da manhã ("saldo 1234,50", ou só o valor / "depois" enquanto o bot espera)
-  const saldo = tratarSaldo(t, hoje);
+  const saldo = await tratarSaldo(t, hoje);
   if (saldo !== undefined) return saldo;
 
   // 3) comandos conhecidos

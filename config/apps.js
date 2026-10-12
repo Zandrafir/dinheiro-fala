@@ -13,7 +13,8 @@
 //    (então "voce" casa com "você"); maiúsculas/minúsculas são ignoradas.
 //    Você pode usar regex normal: (?:para|pra)  .*?  \b
 //
-//  Tipos: pix_enviado | pix_recebido | compra_cartao | debito | boleto
+//  Tipos: pix_enviado | pix_recebido | compra_credito | compra_cartao | debito | boleto
+//         (compra_credito = SEMPRE crédito; compra_cartao = não deu pra saber se foi débito ou crédito)
 //         transferencia_enviada | transferencia_recebida
 //
 //  O texto analisado é:  titulo + "\n" + texto
@@ -91,11 +92,11 @@ export const APPS = [
       p('pix_enviado', 'transferencia enviada.*?{V}.*?para {N}'),
       p('pix_recebido', 'recebeu uma transferencia de {N} no valor de {V}'),
       p('debito', 'compra no debito aprovada.*?compra de {V} em {N}'),
-      p('compra_cartao', 'compra no credito aprovada.*?compra de {V} em {N}'),
+      p('compra_credito', 'compra no credito aprovada.*?compra de {V} em {N}'),
       p('compra_cartao', 'compra de {V} aprovada em {N}'),
-      p('compra_cartao', 'pagamento com nupay aprovado.*?{V}.*?aprovado em {N}'),
+      p('compra_credito', 'pagamento com nupay aprovado.*?{V}.*?aprovado em {N}'),
       p('pix_recebido', 'transferencia recebida.*?recebemos sua transferencia de {V}'),
-      p('compra_cartao', '{V} em \\dx no credito.*?nupay aprovado em {N}'),
+      p('compra_credito', '{V} em \\dx no credito.*?nupay aprovado em {N}'),
       p('boleto', 'pagamento.*?{V}.*?boleto.*?efetuado'),
     ],
   },
@@ -177,7 +178,7 @@ export const APPS = [
     pacote: 'com.mercadopago.wallet',
     marca: /mercado\s?pago/i,
     padroes: [
-      p('compra_cartao', 'voce pagou {V} (?:a|para) {N}\n.*?proxima fatura'),
+      p('compra_credito', 'voce pagou {V} (?:a|para) {N}\n.*?proxima fatura'),
       p('pix_recebido', 'voce depositou {V} via pix'),
       p('transferencia_enviada', 'voce pagou {V} (?:para|a) {N}'),
       p('pix_recebido', 'voce recebeu {V} de {N}'),

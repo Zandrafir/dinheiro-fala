@@ -5,6 +5,7 @@ import Holidays from 'date-holidays';
 import * as contas from './contas.js';
 import * as resumos from './resumos.js';
 import { jobPerguntaSaldo, jobReperguntaSaldo } from './saldo.js';
+import { jobFormaPendente } from './notificacoes.js';
 import { enviar } from './saida.js';
 import { db, getConfig, setConfig } from './db.js';
 import { config } from './config.js';
@@ -99,6 +100,7 @@ export function iniciarAgenda() {
   cron.schedule('0 9 * * *', () => seguro('lembretes', () => jobLembretes()), opts);
   cron.schedule('0 8 * * *', () => seguro('saldo', () => jobPerguntaSaldo()), opts);
   cron.schedule('*/5 8-21 * * *', () => seguro('saldo-repergunta', () => jobReperguntaSaldo()), opts);
+  cron.schedule('*/3 * * * *', () => seguro('forma-pendente', () => jobFormaPendente()), opts);
   cron.schedule('5 0 * * *', () => seguro('virada', () => { const h = agoraLocal(); contas.gerarMes(h.ano, h.mes); contas.atualizarAtrasadas(h.dataIso); }), opts);
   cron.schedule('30 3 * * *', () => seguro('limpeza', () => jobLimpeza()), opts);
   log.info(`Agenda ligada (${config.tz}): 00:05 virada, 08:00 resumos e pergunta do saldo, 09:00 lembretes.`);

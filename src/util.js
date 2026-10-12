@@ -20,6 +20,9 @@ export function agoraLocal(d = agora(), tz = config.tz) {
   };
 }
 
+/** Sorteia um item (variações dos textos-padrão, para o bot não repetir sempre a mesma frase). */
+export const sorteia = (lista) => lista[Math.floor(Math.random() * lista.length)];
+
 export function diasNoMes(ano, mes) {
   return new Date(Date.UTC(ano, mes, 0)).getUTCDate();
 }
