@@ -130,7 +130,7 @@ Os pacotes (Nubank `com.nu.production`, Itaú `com.itau`, etc.) estão na tabela
 1. Crie a conta em <https://www.oracle.com/cloud/free/> e uma instância **Always Free** (Ubuntu 22.04; a VM Ampere A1 ARM ou a AMD Micro servem).
 2. Conecte por SSH e instale o Node 20:
    ```bash
-   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
    sudo apt-get install -y nodejs build-essential python3 git
    ```
 3. Copie o projeto (git ou `scp`), `npm install`, crie o `.env`.

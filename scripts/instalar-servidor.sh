@@ -58,12 +58,12 @@ if [[ $SO_ENV -eq 1 ]]; then criar_env; exit 0; fi
 command -v sudo >/dev/null || die "sudo não encontrado."
 
 # --------------------------------------------------------------- pacotes
-say "1/6  Instalando Node.js 20, pm2 e ferramentas"
+say "1/6  Instalando Node.js 22, pm2 e ferramentas"
 sudo apt-get update -y
 sudo apt-get install -y curl git build-essential python3 ca-certificates
 NODE_MAIOR="$(node -v 2>/dev/null | sed 's/v\([0-9]*\).*/\1/' || true)"
-if [[ -z "${NODE_MAIOR:-}" || "$NODE_MAIOR" -lt 20 ]]; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+if [[ -z "${NODE_MAIOR:-}" || "$NODE_MAIOR" -lt 22 ]]; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
   sudo apt-get install -y nodejs
 fi
 command -v pm2 >/dev/null || sudo npm install -g pm2
