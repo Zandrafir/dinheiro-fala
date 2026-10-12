@@ -93,6 +93,7 @@ export const APPS = [
       p('compra_cartao', 'compra no credito aprovada.*?compra de {V} em {N}'),
       p('compra_cartao', 'compra de {V} aprovada em {N}'),
       p('compra_cartao', 'pagamento com nupay aprovado.*?{V}.*?aprovado em {N}'),
+      p('pix_recebido', 'transferencia recebida.*?recebemos sua transferencia de {V}'),
       p('boleto', 'pagamento.*?{V}.*?boleto.*?efetuado'),
     ],
   },

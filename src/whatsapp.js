@@ -126,7 +126,7 @@ async function conectar() {
 
   sock = makeWASocket({
     version, auth: state, logger: pino({ level: 'silent' }),
-    browser: Browsers.ubuntu('Dinheiro Fala'), markOnlineOnConnect: false, syncFullHistory: false,
+    browser: Browsers.ubuntu('Money Talk'), markOnlineOnConnect: false, syncFullHistory: false,
   });
 
   sock.ev.on('creds.update', saveCreds);

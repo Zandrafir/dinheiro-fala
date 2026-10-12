@@ -3,7 +3,7 @@
 Siga na ordem. Cada passo diz o que clicar. Se travar em qualquer um, me diga em qual número você parou e o que apareceu na tela.
 
 ## O que é cada peça
-- **O bot (Dinheiro Fala)**: um programa que fica ligado 24h num computador e conversa com você no WhatsApp.
+- **O bot (Money Talk)**: um programa que fica ligado 24h num computador e conversa com você no WhatsApp.
 - **O app do celular (Caçador de Notificações)**: lê as notificações dos seus bancos e (1) guarda os textos para você me mandar e (2) envia cada uma para o bot.
 - **O Gemini**: a inteligência do Google que dá a "voz" do dinheiro. É grátis.
 

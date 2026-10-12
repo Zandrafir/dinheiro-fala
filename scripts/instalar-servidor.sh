@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instala e liga o Dinheiro Fala num servidor Ubuntu/Debian (ex.: Oracle Cloud Free Tier).
+# Instala e liga o Money Talk num servidor Ubuntu/Debian (ex.: Oracle Cloud Free Tier).
 # Uso:  bash scripts/instalar-servidor.sh          (instalação completa, interativa)
 #       bash scripts/instalar-servidor.sh --so-env (só cria o arquivo .env)
 set -euo pipefail

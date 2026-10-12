@@ -1,4 +1,4 @@
-# 💸 Dinheiro Fala
+# 💸 Money Talk (antes "Dinheiro Fala")
 
 Bot de WhatsApp que funciona como o seu assistente financeiro pessoal e **fala em primeira pessoa, como se fosse o seu dinheiro**:
 

@@ -435,5 +435,14 @@
     "esperado": {
       "tipo": "ignorar"
     }
+  },
+  {
+    "app": "com.nu.production",
+    "titulo": "Transferência recebida",
+    "texto": "Recebemos sua transferência de R$ 1,00.",
+    "esperado": {
+      "tipo": "pix_recebido",
+      "valor": 100
+    }
   }
 ]
