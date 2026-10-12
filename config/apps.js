@@ -86,6 +86,7 @@ export const APPS = [
   {
     nome: 'Nubank',
     pacote: 'com.nu.production',
+    marca: /\bnubank\b|\bnu\s?pay\b/i,
     padroes: [
       p('pix_enviado', 'transferencia enviada.*?{V}.*?para {N}'),
       p('pix_recebido', 'recebeu uma transferencia de {N} no valor de {V}'),
@@ -94,6 +95,7 @@ export const APPS = [
       p('compra_cartao', 'compra de {V} aprovada em {N}'),
       p('compra_cartao', 'pagamento com nupay aprovado.*?{V}.*?aprovado em {N}'),
       p('pix_recebido', 'transferencia recebida.*?recebemos sua transferencia de {V}'),
+      p('compra_cartao', '{V} em \\dx no credito.*?nupay aprovado em {N}'),
       p('boleto', 'pagamento.*?{V}.*?boleto.*?efetuado'),
     ],
   },
@@ -164,6 +166,7 @@ export const APPS = [
   {
     nome: 'PicPay',
     pacote: 'com.picpay',
+    marca: /pic\s?pay/i,
     padroes: [
       p('transferencia_enviada', 'voce pagou {V} (?:para|a) {N}'),
       p('pix_recebido', 'voce recebeu {V} de {N}'),
@@ -172,6 +175,7 @@ export const APPS = [
   {
     nome: 'Mercado Pago',
     pacote: 'com.mercadopago.wallet',
+    marca: /mercado\s?pago/i,
     padroes: [
       p('compra_cartao', 'voce pagou {V} (?:a|para) {N}\n.*?proxima fatura'),
       p('pix_recebido', 'voce depositou {V} via pix'),
@@ -183,6 +187,8 @@ export const APPS = [
   {
     nome: 'Google Carteira',
     pacote: 'com.google.android.apps.walletnfcrel',
+    marca: /••\s?\d{4}/,
+    marcaForte: true,   // o texto da Carteira cita o banco do cartão ("Nubank ••1234"); vale antes das outras marcas
     // Carteira Google: sempre compra no cartão. Título costuma ser "R$ 45,90 em ESTABELECIMENTO".
     padroes: [
       // formato real: título = estabelecimento; texto = "R$ 20,00 com Nubank Mastercard Gold ••1234"

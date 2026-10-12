@@ -1,5 +1,5 @@
 // Extração de dados de notificações: regex primeiro, Gemini só como plano B.
-import { appPorPacote, PADROES_GENERICOS, IGNORAR, RECUSADAS, DUPLICATAS } from '../config/apps.js';
+import { APPS, appPorPacote, PADROES_GENERICOS, IGNORAR, RECUSADAS, DUPLICATAS } from '../config/apps.js';
 import { parseValor } from './util.js';
 import * as ia from './ia.js';
 import { log } from './log.js';
@@ -22,6 +22,28 @@ export function limparContraparte(c) {
     .replace(/^[\s:\-–]+/g, '');
   if (s.length > 80) s = s.slice(0, 80);
   return s || null;
+}
+
+/** Variável do MacroDroid que não foi substituída (ex.: "{notification_title}") não é conteúdo. */
+export function limparVariavel(s) {
+  return /^\{[\w=.\-]+\}$/.test(String(s ?? '').trim()) ? '' : String(s ?? '');
+}
+
+/**
+ * Descobre o pacote do app. Aceita o pacote, o nome do app, ou (se o celular não mandou nada útil)
+ * deduz pelo conteúdo: primeiro a marca ("NuPay", "Mercado Pago", "••1234"), depois os padrões do app.
+ */
+export function resolverPacote(app, titulo, texto) {
+  const a = String(app ?? '').trim().toLowerCase();
+  const direto = APPS.find((x) => a && (a === x.pacote.toLowerCase() || a === x.nome.toLowerCase() || a.includes(x.pacote.toLowerCase())));
+  if (direto) return direto.pacote;
+  if (/^[a-z][\w]*(?:\.[\w]+)+$/i.test(a)) return null;   // pacote real, mas que não conhecemos
+  const alvo = normalizarTexto(`${titulo ?? ''}\n${texto ?? ''}`);
+  const marcas = [...APPS].filter((x) => x.marca).sort((x, y) => Number(!!y.marcaForte) - Number(!!x.marcaForte));
+  const porMarca = marcas.find((x) => x.marca.test(alvo));
+  if (porMarca) return porMarca.pacote;
+  const porPadrao = APPS.find((x) => x.padroes.some((p) => p.regex.test(alvo)));
+  return porPadrao ? porPadrao.pacote : null;
 }
 
 /** Tenta todos os padrões (do app, depois genéricos). Retorna {tipo, valor, contraparte, via:'regex'} ou null. */
@@ -64,9 +86,15 @@ export function ehIgnoravel(titulo, texto) {
  *  { ignorar: true, motivo }  ou  { tipo, valor, contraparte, confianca, via, app }
  * Ordem: recusadas/estornos -> regex -> lista de ignorar -> Gemini -> (na dúvida) ignorar.
  */
-export async function interpretarNotificacao({ app: pacote, titulo, texto }, { usarIA = true } = {}) {
+export async function interpretarNotificacao({ app, titulo: tituloBruto, texto: textoBruto }, { usarIA = true } = {}) {
+  const titulo = limparVariavel(tituloBruto);
+  const texto = limparVariavel(textoBruto);
+  const pacote = resolverPacote(app, titulo, texto);
   const info = appPorPacote(pacote);
-  if (!info) return { ignorar: true, motivo: 'app_desconhecido' };
+  if (!info) {
+    if (RECUSADAS.some((rx) => rx.test(`${titulo}\n${texto}`))) return { ignorar: true, motivo: 'recusada', ...extrairRecusada(titulo, texto) };
+    return { ignorar: true, motivo: 'app_desconhecido' };
+  }
 
   if (RECUSADAS.some((rx) => rx.test(`${titulo ?? ''}\n${texto ?? ''}`))) {
     return { ignorar: true, motivo: 'recusada', ...extrairRecusada(titulo, texto) };
