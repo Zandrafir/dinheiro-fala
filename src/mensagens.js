@@ -34,7 +34,8 @@ const RE = {
   qGastei: /quanto\s+(?:eu\s+)?(?:j[aá]\s+)?(?:gastei|gastamos|saiu)/i,
   qSobra: /quanto\s+(?:ainda\s+)?(?:sobra|resta|falta|posso)|^sobra\??$/i,
   qSaldo: /^(?:(?:qual\s+(?:[eé]\s+)?)?(?:o\s+)?(?:meu\s+)?saldo(?:\s+atual)?|quanto\s+(?:eu\s+)?(?:ainda\s+)?tenho(?:\s+na\s+conta)?|quanto\s+tem\s+na\s+conta)\s*\??$/i,
-  limites: /^(?:limites?(?:\s+de\s+cr[eé]dito)?|meus\s+limites|cart[oõ]es|meus\s+cart[oõ]es|quanto\s+(?:ainda\s+)?(?:resta|tenho|sobra)\s+de\s+(?:limite|cr[eé]dito))\s*\??$/i,
+  limites: /^(?:(?:qual\s+(?:[eé]\s+)?)?(?:o\s+)?(?:meu\s+|meus\s+)?limites?(?:\s+(?:dispon[ií]veis?|de\s+cr[eé]dito|do\s+cart[aã]o|dos\s+cart[oõ]es))?|cart[oõ]es|meus\s+cart[oõ]es|quanto\s+(?:eu\s+)?(?:ainda\s+)?(?:tenho|resta|sobra|falta|posso\s+gastar)\s+(?:de|no|do|na)\s+(?:limite|cr[eé]dito|cart[aã]o)(?:\s+dispon[ií]vel)?|quanto\s+(?:eu\s+)?(?:ainda\s+)?(?:resta|tenho|sobra)\s+de\s+(?:limite|cr[eé]dito))\s*\??$/i,
+  limiteCartao: /^(?:(?:qual\s+(?:[eé]\s+)?)?(?:o\s+)?(?:meu\s+)?limite(?:\s+dispon[ií]vel)?\s+(?:do|da|no|na|de)\s+(.+?)|quanto\s+(?:eu\s+)?(?:ainda\s+)?(?:tenho|resta|sobra|falta|posso\s+gastar)\s+(?:de\s+)?(?:limite|cr[eé]dito)\s+(?:do|da|no|na|de)\s+(.+?)|(?:limite|cr[eé]dito)\s+(?:do|da|no|na|de)\s+(.+?))\s*\??$/i,
   limiteDefinir: new RegExp(String.raw`^limite\s+(.+?)\s+${VAL}$`, 'i'),
   usadoDefinir: new RegExp(String.raw`^(?:usado|usei|uso|fatura)\s+(.+?)\s+${VAL}$`, 'i'),
   pagarFatura: new RegExp(String.raw`^(?:paguei|pago|pagar)\s+(?:a\s+)?fatura\s+(?:do\s+|da\s+|de\s+)?(.+?)\s+${VAL}$`, 'i'),
@@ -62,7 +63,8 @@ export const TEXTO_AJUDA = `*Money Talk: seu dinheiro conversando com você* �
 • *Quanto gastei?* · *Gastos por categoria* · *Últimos gastos*
 
 *💳 Crédito*
-• *Limites* · quanto resta em cada cartão
+• *Limites* ou *Quanto tenho de limite?* · quanto resta em cada cartão
+• *Limite do nubank* · só de um cartão
 • *Limite nubank 600* · *Usado nubank 450*
 • *Paguei fatura nubank 450*
 
@@ -394,6 +396,7 @@ async function tentarComando(t, hoje) {
   if (RE.limites.test(t)) return cartoes.textoLimites();
   if ((m = RE.pagarFatura.exec(t))) return cmdPagarFatura(m);
   if ((m = RE.limiteDefinir.exec(t))) return cmdLimite(m);
+  if ((m = RE.limiteCartao.exec(t))) { const chave = cartoes.chaveCartao(m[1] ?? m[2] ?? m[3]); if (chave) return cartoes.textoLimites(chave); }
   if ((m = RE.usadoDefinir.exec(t))) return cmdUsado(m, hoje);
   if (RE.limparCapturas.test(t)) return `Apaguei ${capturas.limpar()} captura(s) 🗑️`;
   if (RE.capturas.test(t)) {

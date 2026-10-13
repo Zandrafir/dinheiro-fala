@@ -16,7 +16,7 @@ const arquivo = args.find((a) => !a.startsWith('--')) || path.join(raiz, 'exempl
 
 if (usarIA) {
   const { config } = await import('../src/config.js');
-  if (!iniciarIA(config.geminiKey, config.geminiModel)) console.log('⚠️  --ia pedido mas GEMINI_API_KEY não está no .env; seguindo só com regex.\n');
+  if (!iniciarIA(config.geminiKey, config.geminiModels)) console.log('⚠️  --ia pedido mas GEMINI_API_KEY não está no .env; seguindo só com regex.\n');
 }
 
 const lista = JSON.parse(fs.readFileSync(arquivo, 'utf8')).filter((n) => n.app);

@@ -186,3 +186,21 @@ test('teto diário de chamadas ao Gemini', () => {
   const amanha = agoraLocal(new Date(agoraMs + 24 * 3600_000));
   assert.equal(reservarChamada(amanha), true);
 });
+
+test('perguntar o limite de crédito: geral, por cartão e em frases naturais', async () => {
+  iniciar();
+  await msg('usado nubank 300');
+  for (const frase of ['limites', 'Limite', 'qual meu limite?', 'quanto tenho de limite?', 'quanto resta de crédito', 'meus cartões']) {
+    const r = await msg(frase);
+    assert.match(r, /Nubank/, frase);
+    assert.match(r, /Mercado Pago/, frase);
+    assert.match(r, /Resta: \*R\$ 300,00\*/, frase);
+  }
+  for (const frase of ['limite do nubank', 'quanto tenho de limite no nubank?', 'qual o limite da nubank']) {
+    const r = await msg(frase);
+    assert.match(r, /Nubank/, frase);
+    assert.doesNotMatch(r, /Mercado Pago/, frase);
+  }
+  assert.match(await msg('limite do mercado pago'), /Mercado Pago[\s\S]*Resta: \*R\$ 400,00\*/);
+  assert.match(await msg('limite nubank 700'), /agora é R\$ 700,00/);   // com valor continua sendo para DEFINIR
+});

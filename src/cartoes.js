@@ -2,7 +2,7 @@
 // uso atual = usado_base (informado) + compras no crédito depois disso − faturas pagas depois disso.
 // Compra no crédito NÃO sai do saldo; só ocupa limite. Pagar a fatura sai do saldo e libera o limite.
 import { db } from './db.js';
-import { agoraLocal, chaveMes, fmtBRL, normalizar } from './util.js';
+import { agoraLocal, chaveMes, fmtBRL, normalizar, sorteia } from './util.js';
 
 /** "nubank", "nu pay", "mercado pago", "mp" ... -> chave do cartão (ou null). */
 export function chaveCartao(texto) {
@@ -73,12 +73,26 @@ export function verificarLimite(chave, hoje = agoraLocal()) {
   return null;
 }
 
-export function textoLimites() {
-  const linhas = listar().map((c) => {
-    const r = resumo(c.chave);
-    const barra = '▰'.repeat(Math.min(10, Math.round(r.pct * 10))) + '▱'.repeat(Math.max(0, 10 - Math.round(r.pct * 10)));
-    const aviso = r.informouUso ? '' : ' _(me diz quanto já usou: *usado ' + c.chave + ' 450*)_';
-    return `💳 *${r.nome}*\n${barra} ${Math.round(r.pct * 100)}%\nUsado: ${fmtBRL(r.usado)} · Limite: ${fmtBRL(r.limite)} · Resta: *${fmtBRL(r.disponivel)}*${aviso}`;
-  });
-  return linhas.length ? `*Meus limites de crédito*\n\n${linhas.join('\n\n')}` : 'Ainda não tenho cartão nenhum cadastrado. Manda: *limite nubank 600*.';
+/** Uma frase de humor conforme o quanto do limite já foi usado (sem números). */
+function comentarioLimite(pct) {
+  if (pct >= 1) return sorteia(['Estourou! Só me resta rezar até a fatura virar 🙏', 'Limite no talo. O cartão pede arrego 🫠']);
+  if (pct >= 0.8) return sorteia(['Segura o cartão, parceiro! 🛑', 'Tá no sufoco: respira antes da próxima compra 😬']);
+  if (pct >= 0.5) return sorteia(['Passou da metade; vamos com calma 👀', 'Metade já foi. A outra metade pede carinho 😅']);
+  return sorteia(['Tá tranquilo por aqui 😌', 'Folga boa no limite, mas sem euforia 😉']);
+}
+
+function blocoCartao(c) {
+  const r = resumo(c.chave);
+  const cheios = Math.min(10, Math.round(r.pct * 10));
+  const barra = '▰'.repeat(cheios) + '▱'.repeat(10 - cheios);
+  const aviso = r.informouUso ? '' : ' _(me diz quanto já usou: *usado ' + c.chave + ' 450*)_';
+  return `💳 *${r.nome}*\n${barra} ${Math.round(r.pct * 100)}%\nUsado: ${fmtBRL(r.usado)} · Limite: ${fmtBRL(r.limite)} · Resta: *${fmtBRL(r.disponivel)}*${aviso}\n${comentarioLimite(r.pct)}`;
+}
+
+/** Todos os cartões, ou só o da chave informada. */
+export function textoLimites(chave = null) {
+  const lista = chave ? listar().filter((c) => c.chave === chave) : listar();
+  if (!lista.length) return 'Ainda não tenho esse cartão cadastrado. Manda: *limite nubank 600*.';
+  const titulo = chave ? '' : '*Meus limites de crédito*\n\n';
+  return `${titulo}${lista.map(blocoCartao).join('\n\n')}`;
 }
