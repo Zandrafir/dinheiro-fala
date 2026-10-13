@@ -1,6 +1,6 @@
 // Roteador das mensagens que eu mando pelo WhatsApp: comandos, respostas às perguntas do bot
 // e conversa livre (Gemini só interpreta; quem executa e calcula é o código).
-import { db } from './db.js';
+import { db, getConfig } from './db.js';
 import * as tx from './transacoes.js';
 import * as contas from './contas.js';
 import * as perguntas from './perguntas.js';
@@ -10,6 +10,7 @@ import { avisoGasto, avisoCredito, decidirCategoria, tratarInterpretada } from '
 import * as capturas from './capturas.js';
 import { tratarSaldo, textoSaldo, lerDiferenca, linhaSaldo } from './saldo.js';
 import * as cartoes from './cartoes.js';
+import { tratarComprovante, lerRascunho, dataIsoDoComprovante } from './comprovante.js';
 import { enviar } from './saida.js';
 import { agoraLocal, parseValor, fmtBRL, fmtDataCurta, normalizar, sorteia } from './util.js';
 
@@ -75,6 +76,9 @@ export const TEXTO_AJUDA = `*Money Talk: seu dinheiro conversando com você* �
 *📊 Resumos e metas*
 • *Resumo* · *Quanto sobra?* · *Renda 5000*
 • *Orçamento mercado 800* · *Orçamentos*
+
+*📸 Comprovantes*
+• Mande a *foto ou o PDF* do comprovante (Pix, boleto...) e eu leio e anoto, depois que você confirmar
 
 *🛠️ Outros*
 • *Capturas* (notificações que não entendi) · *Limpar capturas*
@@ -296,6 +300,22 @@ async function responderPergunta(q, texto, hoje) {
     return comAlerta(msg, cat, hoje);
   }
 
+  if (q.tipo === 'comprovante') {
+    const d = lerRascunho(q.id);
+    if (!d) { perguntas.fechar(q.id, 'expirada'); return 'Esse comprovante já expirou 🤷 Manda de novo.'; }
+    if (ehSim(texto)) {
+      perguntas.fechar(q.id);
+      await tratarInterpretada({ tipo: d.tipo, valor: d.valor, contraparte: d.contraparte, app: 'Nubank', via: 'comprovante' },
+        { hash: `img:${d.hash}`, dataIso: dataIsoDoComprovante(d) });
+      return null;
+    }
+    if (ehNao(texto)) {
+      perguntas.fechar(q.id, 'pulada');
+      return 'Ok, não anotei 👍 Se algum dado estava errado, me manda do jeito certo (ex.: *gastei 45 pix João*).';
+    }
+    return 'Responde só *sim* ou *não* pra eu saber se anoto esse comprovante 🙂';
+  }
+
   if (q.tipo === 'saldo_diferenca') {
     const d = lerDiferenca();
     if (!d || d.perguntaId !== q.id) { perguntas.fechar(q.id, 'expirada'); return 'Essa conferência já passou 🤷'; }
@@ -442,8 +462,9 @@ async function tentarComando(t, hoje) {
  * Ponto de entrada. Retorna o texto de resposta (ou null se não há nada a enviar agora).
  * `citadoId` = id da mensagem do bot que eu respondi usando "responder" no WhatsApp.
  */
-export async function tratarMensagem({ texto, citadoId = null }, { hoje = agoraLocal() } = {}) {
+export async function tratarMensagem({ texto, citadoId = null, imagem = null }, { hoje = agoraLocal() } = {}) {
   const t = String(texto ?? '').trim();
+  if (imagem) return tratarComprovante(imagem, t);   // foto ou PDF de comprovante
   if (!t) return null;
 
   // 1) resposta citada a uma pergunta do bot vale mais que qualquer comando

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import makeWASocket, {
   useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion,
-  jidNormalizedUser, normalizeMessageContent, generateMessageIDV2, Browsers,
+  jidNormalizedUser, normalizeMessageContent, generateMessageIDV2, Browsers, downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
@@ -91,9 +91,13 @@ async function remetenteEhDono(msg) {
 function extrair(msg) {
   const c = normalizeMessageContent(msg.message);
   if (!c) return null;
-  const texto = c.conversation || c.extendedTextMessage?.text || '';
-  const citadoId = c.extendedTextMessage?.contextInfo?.stanzaId || null;
-  return { texto, citadoId, ehTexto: !!texto };
+  const img = c.imageMessage;
+  const doc = c.documentMessage && /pdf|image/i.test(c.documentMessage.mimetype || '') ? c.documentMessage : null;
+  const midia = img ? { mimetype: img.mimetype || 'image/jpeg', tamanho: Number(img.fileLength || 0) }
+    : doc ? { mimetype: doc.mimetype, tamanho: Number(doc.fileLength || 0) } : null;
+  const texto = c.conversation || c.extendedTextMessage?.text || img?.caption || doc?.caption || '';
+  const citadoId = c.extendedTextMessage?.contextInfo?.stanzaId || img?.contextInfo?.stanzaId || null;
+  return { texto, citadoId, midia, ehTexto: !!texto && !midia };
 }
 
 async function tratarUpsert({ messages, type }) {
@@ -107,7 +111,16 @@ async function tratarUpsert({ messages, type }) {
       if (!(await remetenteEhDono(msg))) continue;
       const c = extrair(msg);
       if (!c) continue;
-      if (!c.ehTexto) { await enviarTexto('Só entendo texto por enquanto 🙈'); continue; }
+      if (c.midia) {
+        if (c.midia.tamanho > 5 * 1024 * 1024) { await enviarTexto('Esse arquivo é grande demais pra eu ler (o limite é 5 MB) 🐘'); continue; }
+        const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger: pino({ level: 'silent' }), reuploadRequest: sock.updateMediaMessage });
+        cadeia = cadeia.then(async () => {
+          const resposta = await aoReceber({ texto: c.texto, citadoId: c.citadoId, imagem: { buffer, mimetype: c.midia.mimetype } });
+          if (resposta) await enviarTexto(resposta);
+        }).catch((e) => log.erro('Erro ao tratar comprovante:', e.message));
+        continue;
+      }
+      if (!c.ehTexto) { await enviarTexto('Por enquanto eu só entendo texto e comprovantes (foto ou PDF) 🙈'); continue; }
       cadeia = cadeia.then(async () => {
         const resposta = await aoReceber({ texto: c.texto, citadoId: c.citadoId });
         if (resposta) await enviarTexto(resposta);

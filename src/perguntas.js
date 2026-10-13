@@ -2,7 +2,7 @@
 import { db } from './db.js';
 
 export const VALIDADE_MS = 48 * 3600 * 1000;
-const TIPOS_CONFIRMACAO = new Set(['baixa_incerta', 'baixa_feita']);
+const TIPOS_CONFIRMACAO = new Set(['baixa_incerta', 'baixa_feita', 'comprovante']);
 export const ehConfirmacao = (tipo) => TIPOS_CONFIRMACAO.has(tipo);
 
 export function criar({ tipo, transacaoId = null, pagamentoId = null, msgId = null }, agoraMs = Date.now()) {

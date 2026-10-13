@@ -6,6 +6,8 @@ export function lerConfig(env = process.env) {
     geminiKey: env.GEMINI_API_KEY || '',
     // Lista separada por vírgula: tenta na ordem; cada modelo tem a sua própria cota gratuita.
     geminiModels: env.GEMINI_MODELS || 'gemini-flash-lite-latest,gemini-3.5-flash-lite',
+    // Imagem/PDF: os modelos "lite" travam com imagem (testado em 13/10/2026); usa os completos.
+    geminiModelosVisao: env.GEMINI_MODELS_VISAO || 'gemini-3.5-flash,gemini-flash-latest',
     webhookToken: env.WEBHOOK_TOKEN || '',
     meuNumero: (env.MEU_NUMERO || '').replace(/\D/g, ''),
     modoChat,
