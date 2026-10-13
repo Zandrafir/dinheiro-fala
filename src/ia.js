@@ -86,7 +86,7 @@ export function iniciarIA(apiKey = config.geminiKey, modelos = config.geminiMode
     throw ultimoErro;
   };
   cliente = {
-    json: (p) => chamar(mJson, p),
+    json: (p) => chamar(mJson, p, { timeoutMs: 12000, tentativas: 2 }),
     texto: (p, opcoes) => chamar(mTexto, p, opcoes),
     visao: (p, img) => chamar(mVisao, [p, { inlineData: { data: img.buffer.toString('base64'), mimeType: img.mimetype } }], { timeoutMs: 20000, tentativas: 2 }),
   };

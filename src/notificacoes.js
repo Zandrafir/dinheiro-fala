@@ -64,6 +64,20 @@ function compraJaRegistrada(r) {
     || contas.similaridade(r.contraparte, t.contraparte) >= 0.5) || null;
 }
 
+/**
+ * Se a Carteira já guardou um rascunho (compra sem tipo) desta mesma compra, ele é substituído pelo lançamento do banco.
+ * Também é chamada DEPOIS das esperas (Gemini), porque as duas notificações costumam chegar quase juntas.
+ */
+function absorverRascunho(r, base) {
+  const rasc = compraJaRegistrada(r);
+  if (!rasc || rasc.tipo !== 'compra_cartao') return;
+  log.info(`Rascunho da ${rasc.origem_app} absorvido pelo ${r.app} (${r.tipo}).`);
+  if ((rasc.contraparte || '').length > (base.contraparte || '').length) base.contraparte = rasc.contraparte;
+  base.dataIso = base.dataIso ?? rasc.data;
+  db().prepare(`UPDATE perguntas_pendentes SET status = 'expirada' WHERE tipo = 'forma' AND transacao_id = ? AND status = 'aberta'`).run(rasc.id);
+  tx.apagar(rasc.id);
+}
+
 async function perguntar(texto, dadosPergunta) {
   const msgId = await enviar(texto);
   perguntas.criar({ ...dadosPergunta, msgId });
@@ -176,6 +190,7 @@ export async function tratarInterpretada(r, { hash = null, agoraMs = agora().get
 
   // ------------------------------------- saídas: cartão/débito => categoriza sozinho
   const cat = await decidirCategoria(r.contraparte || '');
+  if (r.tipo === 'debito' || r.tipo === 'compra_credito') absorverRascunho(r, base);   // a Carteira pode ter avisado enquanto eu pensava
   if (!r.contraparte || cat.confianca < 0.6) {
     const id = tx.registrar({ ...base, status: 'pendente' });
     const onde = r.contraparte ? ` em ${r.contraparte}` : '';
@@ -258,6 +273,9 @@ export async function jobFormaPendente(agoraMs = agora().getTime()) {
   for (const t of linhas) {
     const jaPerguntei = db().prepare(`SELECT 1 FROM perguntas_pendentes WHERE tipo = 'forma' AND transacao_id = ?`).get(t.id);
     if (jaPerguntei) continue;
+    const definida = db().prepare(`SELECT id FROM transacoes WHERE id != ? AND valor = ? AND tipo IN ('debito','compra_credito') AND data >= ?`)
+      .get(t.id, t.valor, agoraLocal(new Date(agoraMs - 15 * 60 * 1000)).iso);
+    if (definida) { tx.apagar(t.id); continue; }   // o banco já registrou esta compra: o rascunho era repetido
     const onde = t.contraparte ? ` em ${t.contraparte}` : '';
     await perguntar(`Vi uma compra de ${fmtBRL(t.valor)}${onde}, mas não sei se foi no *débito* ou no *crédito* 🤔 Qual foi? (responde *débito* ou *crédito*)`, { tipo: 'forma', transacaoId: t.id });
     n += 1;

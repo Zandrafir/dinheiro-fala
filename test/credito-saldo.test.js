@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { processarNotificacao, jobFormaPendente } from '../src/notificacoes.js';
 import { tratarMensagem } from '../src/mensagens.js';
 import { jobPerguntaSaldo, saldoAtual } from '../src/saldo.js';
-import { reservarChamada, MAX_CHAMADAS_DIA } from '../src/ia.js';
+import { reservarChamada, MAX_CHAMADAS_DIA, _setCliente } from '../src/ia.js';
 import * as cartoes from '../src/cartoes.js';
 import { db } from '../src/db.js';
 import { setRelogio, agoraLocal } from '../src/util.js';
@@ -203,4 +203,39 @@ test('perguntar o limite de crédito: geral, por cartão e em frases naturais', 
   }
   assert.match(await msg('limite do mercado pago'), /Mercado Pago[\s\S]*Resta: \*R\$ 400,00\*/);
   assert.match(await msg('limite nubank 700'), /agora é R\$ 700,00/);   // com valor continua sendo para DEFINIR
+});
+
+test('corrida: o Nubank espera o Gemini enquanto a Carteira chega; no fim fica UMA compra só', async () => {
+  const env = iniciar();
+  await msg('saldo 100');
+  avancar(1);
+  let liberar;
+  _setCliente({
+    json: () => new Promise((res) => { liberar = () => res(JSON.stringify({ categoria: 'alimentação', confianca: 0.9 })); }),
+    texto: async () => { throw new Error('x'); },
+  });
+  const nubank = notif(debito('14,00', 'ZZXQ KALINKA'));            // fica esperando o Gemini categorizar
+  await new Promise((r) => setTimeout(r, 20));
+  await notif({ app: WALLET, titulo: 'ZZXQ KALINKA', texto: 'R$ 14,00 com Nubank Mastercard Gold ••4516' });   // chega no meio da espera
+  assert.equal(linhas().length, 1);                                  // por enquanto só o rascunho da Carteira
+  liberar();
+  await nubank;
+  const l = linhas();
+  assert.equal(l.length, 1); assert.equal(l[0].tipo, 'debito'); assert.equal(l[0].categoria, 'alimentação');
+  assert.equal(saldoAtual().saldo, 8600);
+  assert.equal(await jobFormaPendente(agoraMs + 10 * 60_000), 0);   // nenhuma pergunta "débito ou crédito" sobrou
+  assert.equal(env.filter((e) => /débito\* ou no \*crédito/.test(e.texto)).length, 0);
+  _setCliente(null);
+});
+
+test('rede de segurança: rascunho repetido de uma compra que o banco já registrou é descartado sem perguntar', async () => {
+  const env = iniciar();
+  await msg('saldo 100');
+  avancar(1);
+  db().prepare("INSERT INTO transacoes (data, tipo, valor, contraparte, origem_app, status_categoria) VALUES (?,?,?,?,?,?)").run(agoraLocal().iso, 'compra_cartao', 1400, 'LANCHES', 'Google Carteira', 'pendente');
+  db().prepare("INSERT INTO transacoes (data, tipo, valor, contraparte, origem_app, status_categoria, categoria) VALUES (?,?,?,?,?,?,?)").run(agoraLocal().iso, 'debito', 1400, 'LANCHES', 'Nubank', 'ok', 'alimentação');
+  avancar(5);
+  assert.equal(await jobFormaPendente(agoraMs), 0);
+  assert.equal(linhas().length, 1);
+  assert.equal(env.filter((e) => /débito\* ou no \*crédito/.test(e.texto)).length, 0);
 });
